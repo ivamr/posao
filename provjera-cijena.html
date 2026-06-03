@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cijene">
+<title>Provjera cijena</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e10;
+    --surface: #1a1a1f;
+    --surface2: #24242b;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --muted: #888;
+    --faint: #444;
+    --accent: #c8f060;
+    --accent-dim: rgba(200,240,96,0.12);
+    --accent-text: #1a2200;
+    --red: #ff6b6b;
+    --yellow: #ffd166;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 0 0 80px;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    padding: 56px 20px 20px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .app-title {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+  .app-title span {
+    color: var(--accent);
+  }
+  .stats-pill {
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,240,96,0.25);
+    color: var(--accent);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 16px 12px 42px;
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 17px;
+    pointer-events: none;
+  }
+  .clear-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--surface2);
+    border: none;
+    color: var(--muted);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 13px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .clear-btn.show { display: flex; }
+
+  /* Upload area */
+  .upload-section {
+    padding: 20px;
+  }
+  .upload-btn {
+    width: 100%;
+    background: var(--surface);
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .upload-btn:active {
+    background: var(--surface2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .upload-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .upload-texts { flex: 1; }
+  .upload-label { font-weight: 500; color: var(--text); font-size: 14px; }
+  .upload-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #fileInput { display: none; }
+
+  /* Empty state */
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    display: none;
+  }
+  .empty-state.show { display: block; }
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+  }
+  .empty-title { font-size: 16px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; color: var(--faint); }
+
+  /* No results */
+  .no-results {
+    padding: 40px 24px;
+    text-align: center;
+    display: none;
+  }
+  .no-results.show { display: block; }
+  .no-results-text { font-size: 14px; color: var(--muted); }
+  .no-results-query { color: var(--text); font-weight: 500; }
+
+  /* Section label */
+  .section-label {
+    padding: 6px 20px 8px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Product list */
+  .product-list {
+    padding: 0 12px;
+  }
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.15s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .product-card:active {
+    background: var(--surface2);
+  }
+  .prod-info { flex: 1; min-width: 0; }
+  .prod-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .prod-name mark {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+  .prod-meta {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .prod-sku { color: var(--faint); }
+  .stock-badge {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .stock-ok { background: rgba(200,240,96,0.1); color: var(--accent); border: 1px solid rgba(200,240,96,0.2); }
+  .stock-low { background: rgba(255,209,102,0.1); color: var(--yellow); border: 1px solid rgba(255,209,102,0.2); }
+  .stock-out { background: rgba(255,107,107,0.1); color: var(--red); border: 1px solid rgba(255,107,107,0.2); }
+
+  .prod-right { text-align: right; flex-shrink: 0; }
+  .prod-price {
+    font-size: 17px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .prod-stock-num {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 30px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  /* Loading */
+  .loading {
+    padding: 40px 24px;
+    text-align: center;
+    display: none;
+  }
+  .loading.show { display: block; }
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--muted); }
+
+  /* Column mapper */
+  .mapper-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 50;
+    display: none;
+    align-items: flex-end;
+    padding: 12px;
+  }
+  .mapper-overlay.show { display: flex; }
+  .mapper-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .mapper-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .mapper-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .mapper-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .mapper-label { font-size: 13px; color: var(--text); font-weight: 500; }
+  .mapper-label span { color: var(--red); }
+  .mapper-select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    min-width: 160px;
+  }
+  .mapper-confirm {
+    width: 100%;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius);
+    padding: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .mapper-confirm:active { opacity: 0.85; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">Provjera<span>.</span></div>
+      <div class="stats-pill" id="statsPill" style="display:none">0 proizvoda</div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="search-input" id="searchInput" type="search" placeholder="Pretraži naziv ili šifru…" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="clear-btn" id="clearBtn" aria-label="Obriši pretragu">✕</button>
+    </div>
+  </div>
+
+  <div class="upload-section">
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">↑</div>
+      <div class="upload-texts">
+        <div class="upload-label" id="uploadLabel">Učitaj Excel datoteku</div>
+        <div class="upload-hint" id="uploadHint">.xlsx ili .xls format</div>
+      </div>
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  </div>
+
+  <div class="loading" id="loadingEl">
+    <div class="spinner"></div>
+    <div class="loading-text">Učitavanje podataka…</div>
+  </div>
+
+  <div class="empty-state show" id="emptyState">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">Nema učitanih podataka</div>
+    <div class="empty-sub">Učitaj Excel datoteku sa popisom proizvoda</div>
+  </div>
+
+  <div class="no-results" id="noResults">
+    <div class="no-results-text">Nema rezultata za "<span class="no-results-query" id="noResultsQuery"></span>"</div>
+  </div>
+
+  <div id="sectionLabel" class="section-label" style="display:none"></div>
+  <div class="product-list" id="productList"></div>
+</div>
+
+<!-- Column mapper sheet -->
+<div class="mapper-overlay" id="mapperOverlay">
+  <div class="mapper-sheet">
+    <div class="mapper-title">Postavi stupce</div>
+    <div class="mapper-sub">Odaberi koji stupac odgovara kojoj informaciji</div>
+    <div id="mapperRows"></div>
+    <button class="mapper-confirm" id="mapperConfirm">Potvrdi i učitaj</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+let allProducts = [];
+let rawHeaders = [];
+let rawData = [];
+let colMap = { name: '', sku: '', price: '', stock: '' };
+
+const searchInput = document.getElementById('searchInput');
+const clearBtn = document.getElementById('clearBtn');
+const productList = document.getElementById('productList');
+const emptyState = document.getElementById('emptyState');
+const noResults = document.getElementById('noResults');
+const noResultsQuery = document.getElementById('noResultsQuery');
+const statsPill = document.getElementById('statsPill');
+const sectionLabel = document.getElementById('sectionLabel');
+const loadingEl = document.getElementById('loadingEl');
+const mapperOverlay = document.getElementById('mapperOverlay');
+const mapperRows = document.getElementById('mapperRows');
+const uploadLabel = document.getElementById('uploadLabel');
+const uploadHint = document.getElementById('uploadHint');
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  emptyState.classList.remove('show');
+  loadingEl.classList.add('show');
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      let data;
+      if (file.name.endsWith('.csv')) {
+        const text = ev.target.result;
+        const lines = text.split('\n').filter(l => l.trim());
+        rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+        rawData = lines.slice(1).map(line => {
+          const vals = line.split(',').map(v => v.trim().replace(/"/g,''));
+          const obj = {};
+          rawHeaders.forEach((h,i) => obj[h] = vals[i] || '');
+          return obj;
+        });
+      } else {
+        const wb = XLSX.read(ev.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        rawHeaders = data.length > 0 ? Object.keys(data[0]) : [];
+        rawData = data;
+      }
+      loadingEl.classList.remove('show');
+      if (rawHeaders.length === 0) { showToast('Datoteka je prazna'); emptyState.classList.add('show'); return; }
+      autoMap();
+      showMapper();
+    } catch(err) {
+      loadingEl.classList.remove('show');
+      showToast('Greška pri čitanju datoteke');
+      emptyState.classList.add('show');
+    }
+  };
+  if (file.name.endsWith('.csv')) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+
+function autoMap() {
+  const lower = h => h.toLowerCase();
+  const find = (keys) => rawHeaders.find(h => keys.some(k => lower(h).includes(k))) || '';
+  colMap.name = find(['naziv', 'name', 'ime', 'proizvod', 'artikl', 'opis', 'product', 'item']);
+  colMap.sku = find(['šifra', 'sifra', 'sku', 'kod', 'code', 'id', 'barcode', 'barkod']);
+  colMap.price = find(['cijena', 'cjena', 'price', 'mpc', 'vpc', 'iznos', 'vrijednost']);
+  colMap.stock = find(['stanje', 'zaliha', 'stock', 'qty', 'količina', 'kolicina', 'inventory']);
+}
+
+function showMapper() {
+  const fields = [
+    { key: 'name', label: 'Naziv', required: true },
+    { key: 'sku', label: 'Šifra / SKU', required: false },
+    { key: 'price', label: 'Cijena', required: true },
+    { key: 'stock', label: 'Stanje na zalihi', required: false },
+  ];
+  mapperRows.innerHTML = fields.map(f => `
+    <div class="mapper-row">
+      <div class="mapper-label">${f.label}${f.required ? ' <span>*</span>' : ''}</div>
+      <select class="mapper-select" data-key="${f.key}">
+        ${f.required ? '' : '<option value="">— ne koristim —</option>'}
+        ${rawHeaders.map(h => `<option value="${h}" ${colMap[f.key] === h ? 'selected' : ''}>${h}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+  mapperOverlay.classList.add('show');
+}
+
+document.getElementById('mapperConfirm').addEventListener('click', function() {
+  mapperOverlay.querySelectorAll('select').forEach(sel => {
+    colMap[sel.dataset.key] = sel.value;
+  });
+  if (!colMap.name || !colMap.price) { showToast('Naziv i cijena su obavezni'); return; }
+  mapperOverlay.classList.remove('show');
+  buildProducts();
+});
+
+function buildProducts() {
+  allProducts = rawData.map((row, i) => ({
+    id: i,
+    name: String(row[colMap.name] || '').trim(),
+    sku: colMap.sku ? String(row[colMap.sku] || '').trim() : '',
+    price: colMap.price ? parseFloat(String(row[colMap.price] || '0').replace(',', '.').replace(/[^\d.]/g, '')) : 0,
+    stock: colMap.stock ? parseInt(row[colMap.stock]) : null,
+  })).filter(p => p.name);
+
+  uploadLabel.textContent = 'Zamijeni datoteku';
+  uploadHint.textContent = `Zadnje učitano: ${new Date().toLocaleTimeString('hr')}`;
+  statsPill.style.display = 'inline';
+  statsPill.textContent = `${allProducts.length} proizvoda`;
+  showToast(`Učitano ${allProducts.length} proizvoda`);
+  renderProducts(allProducts, '');
+}
+
+function highlight(text, query) {
+  if (!query) return escHtml(text);
+  const esc = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escHtml(text).replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function stockClass(n) {
+  if (n === null || n === undefined || isNaN(n)) return '';
+  if (n <= 0) return 'stock-out';
+  if (n <= 5) return 'stock-low';
+  return 'stock-ok';
+}
+function stockLabel(n) {
+  if (n === null || isNaN(n)) return '';
+  if (n <= 0) return 'rasprodano';
+  if (n <= 5) return `malo: ${n}`;
+  return `${n} kom`;
+}
+
+function formatPrice(p) {
+  if (isNaN(p)) return '—';
+  return p.toLocaleString('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function renderProducts(list, query) {
+  emptyState.classList.remove('show');
+  noResults.classList.remove('show');
+  productList.innerHTML = '';
+
+  if (allProducts.length === 0) {
+    emptyState.classList.add('show');
+    sectionLabel.style.display = 'none';
+    return;
+  }
+  if (list.length === 0) {
+    noResultsQuery.textContent = query;
+    noResults.classList.add('show');
+    sectionLabel.style.display = 'none';
+    return;
+  }
+
+  sectionLabel.style.display = 'block';
+  sectionLabel.textContent = query ? `${list.length} rezultata` : 'Svi proizvodi';
+
+  const frag = document.createDocumentFragment();
+  list.forEach(p => {
+    const sc = stockClass(p.stock);
+    const sl = stockLabel(p.stock);
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.innerHTML = `
+      <div class="prod-info">
+        <div class="prod-name">${highlight(p.name, query)}</div>
+        <div class="prod-meta">
+          ${p.sku ? `<span class="prod-sku">${highlight(p.sku, query)}</span>` : ''}
+          ${sc ? `<span class="stock-badge ${sc}">${sl}</span>` : ''}
+        </div>
+      </div>
+      <div class="prod-right">
+        <div class="prod-price">${formatPrice(p.price)}</div>
+        ${p.stock !== null && !isNaN(p.stock) && !sc ? `<div class="prod-stock-num">${p.stock} kom</div>` : ''}
+      </div>
+    `;
+    frag.appendChild(card);
+  });
+  productList.appendChild(frag);
+}
+
+function doSearch(q) {
+  const query = q.trim().toLowerCase();
+  clearBtn.classList.toggle('show', q.length > 0);
+  if (!query) { renderProducts(allProducts, ''); return; }
+  const results = allProducts.filter(p =>
+    p.name.toLowerCase().includes(query) ||
+    p.sku.toLowerCase().includes(query)
+  );
+  renderProducts(results, query);
+}
+
+searchInput.addEventListener('input', e => doSearch(e.target.value));
+clearBtn.addEventListener('click', () => { searchInput.value = ''; clearBtn.classList.remove('show'); doSearch(''); searchInput.focus(); });
+
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+// Load saved data on start
+try {
+  const saved = localStorage.getItem('provjera_products');
+  const savedMap = localStorage.getItem('provjera_colmap');
+  if (saved) {
+    allProducts = JSON.parse(saved);
+    if (savedMap) colMap = JSON.parse(savedMap);
+    statsPill.style.display = 'inline';
+    statsPill.textContent = `${allProducts.length} proizvoda`;
+    uploadLabel.textContent = 'Zamijeni datoteku';
+    uploadHint.textContent = 'Podaci su sačuvani lokalno';
+    renderProducts(allProducts, '');
+  }
+} catch(e) {}
+
+// Save on build
+const _origBuild = buildProducts;
+window.buildProducts = function() {
+  _origBuild();
+  try {
+    localStorage.setItem('provjera_products', JSON.stringify(allProducts));
+    localStorage.setItem('provjera_colmap', JSON.stringify(colMap));
+  } catch(e) {}
+};
+</script>
+</body>
+</html>
