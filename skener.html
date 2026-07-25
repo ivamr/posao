@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cijene">
+<title>Provjera cijena</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  :root {
+    --bg: #0e0e10;
+    --surface: #1a1a1f;
+    --surface2: #24242b;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --muted: #888;
+    --faint: #444;
+    --accent: #c8f060;
+    --accent-dim: rgba(200,240,96,0.12);
+    --accent-text: #1a2200;
+    --red: #ff6b6b;
+    --yellow: #ffd166;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+ 
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+ 
+  .app {
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 0 0 80px;
+    min-height: 100vh;
+  }
+ 
+  /* Header */
+  .header {
+    padding: 56px 20px 20px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+  .app-title {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+  .app-title span {
+    color: var(--accent);
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stats-pill {
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,240,96,0.25);
+    color: var(--accent);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .cart-btn {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .cart-btn:active { background: var(--surface2); }
+  .cart-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+  }
+  .cart-badge.show { display: flex; }
+ 
+  /* Search */
+  .search-wrap {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .search-input-wrap { position: relative; flex: 1; }
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 16px 12px 42px;
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 17px;
+    pointer-events: none;
+  }
+  .clear-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--surface2);
+    border: none;
+    color: var(--muted);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 13px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .clear-btn.show { display: flex; }
+  .scan-btn {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--accent);
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .scan-btn:active { background: var(--surface2); }
+ 
+  /* Upload area */
+  .upload-section {
+    padding: 20px;
+  }
+  .upload-btn {
+    width: 100%;
+    background: var(--surface);
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .upload-btn:active {
+    background: var(--surface2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .upload-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .upload-texts { flex: 1; }
+  .upload-label { font-weight: 500; color: var(--text); font-size: 14px; }
+  .upload-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #fileInput { display: none; }
+ 
+  /* Empty state */
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    display: none;
+  }
+  .empty-state.show { display: block; }
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+  }
+  .empty-title { font-size: 16px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; color: var(--faint); }
+ 
+  /* No results */
+  .no-results {
+    padding: 40px 24px;
+    text-align: center;
+    display: none;
+  }
+  .no-results.show { display: block; }
+  .no-results-text { font-size: 14px; color: var(--muted); }
+  .no-results-query { color: var(--text); font-weight: 500; }
+ 
+  /* Section label */
+  .section-label {
+    padding: 6px 20px 8px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+ 
+  /* Product list */
+  .product-list {
+    padding: 0 12px;
+  }
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.15s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .product-card.in-order {
+    border-color: rgba(200,240,96,0.35);
+  }
+  .prod-info { flex: 1; min-width: 0; }
+  .prod-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .prod-name mark {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+  .prod-meta {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .prod-sku { color: var(--faint); }
+  .stock-badge {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .stock-ok { background: rgba(200,240,96,0.1); color: var(--accent); border: 1px solid rgba(200,240,96,0.2); }
+  .stock-low { background: rgba(255,209,102,0.1); color: var(--yellow); border: 1px solid rgba(255,209,102,0.2); }
+  .stock-out { background: rgba(255,107,107,0.1); color: var(--red); border: 1px solid rgba(255,107,107,0.2); }
+ 
+  .prod-right { text-align: right; flex-shrink: 0; }
+  .prod-price {
+    font-size: 17px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .prod-stock-num {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+ 
+  /* Order stepper on card */
+  .order-add-btn {
+    margin-top: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .order-add-btn:active { border-color: var(--accent); color: var(--accent); }
+  .order-stepper {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .stepper-btn {
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,240,96,0.3);
+    color: var(--accent);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stepper-qty {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 18px;
+    text-align: center;
+  }
+ 
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 30px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+ 
+  /* Loading */
+  .loading {
+    padding: 40px 24px;
+    text-align: center;
+    display: none;
+  }
+  .loading.show { display: block; }
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--muted); }
+ 
+  /* Column mapper */
+  .mapper-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 50;
+    display: none;
+    align-items: flex-end;
+    padding: 12px;
+  }
+  .mapper-overlay.show { display: flex; }
+  .mapper-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .mapper-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .mapper-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .mapper-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .mapper-label { font-size: 13px; color: var(--text); font-weight: 500; }
+  .mapper-label span { color: var(--red); }
+  .mapper-select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    min-width: 160px;
+  }
+  .mapper-confirm {
+    width: 100%;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius);
+    padding: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .mapper-confirm:active { opacity: 0.85; }
+ 
+  /* Scan sheet */
+  .scan-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .scan-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .scan-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  #qrReader {
+    width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #000;
+  }
+  #qrReader video { border-radius: var(--radius); }
+  .scan-cancel {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 14px;
+  }
+  .scan-cancel:active { background: var(--border2); }
+  .scan-manual {
+    margin-top: 14px;
+  }
+  .scan-manual-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+ 
+  /* Order sheet */
+  .order-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .order-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .order-title { font-size: 16px; font-weight: 600; }
+  .order-close {
+    background: var(--surface2);
+    border: none;
+    color: var(--muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .order-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  .order-empty {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .order-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .order-item-info { flex: 1; min-width: 0; }
+  .order-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .order-item-sku {
+    font-size: 11px;
+    color: var(--faint);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+  .order-item-remove {
+    background: none;
+    border: none;
+    color: var(--red);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .order-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .order-action-btn {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 13px 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+  }
+  .order-action-btn.primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+  }
+  .order-action-btn:active { opacity: 0.85; }
+  .order-clear {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--red);
+    font-size: 13px;
+    padding: 12px;
+    margin-top: 6px;
+    cursor: pointer;
+  }
+ 
+  /* Print-only order sheet, hidden on screen */
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea {
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      color: #000;
+      background: #fff;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    #printArea h1 { font-size: 20px; margin-bottom: 4px; }
+    #printArea .print-date { font-size: 12px; color: #444; margin-bottom: 16px; }
+    #printArea table { width: 100%; border-collapse: collapse; }
+    #printArea th, #printArea td {
+      border: 1px solid #999;
+      padding: 6px 8px;
+      font-size: 12px;
+      text-align: left;
+    }
+    #printArea th { background: #eee; }
+    #printArea td.num { text-align: right; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">Provjera<span>.</span></div>
+      <div class="header-right">
+        <div class="stats-pill" id="statsPill" style="display:none">0 proizvoda</div>
+        <button class="cart-btn" id="cartBtn" aria-label="Narudžba">
+          🛒<span class="cart-badge" id="cartBadge">0</span>
+        </button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <div class="search-input-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" id="searchInput" type="search" placeholder="Pretraži naziv ili šifru…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="clear-btn" id="clearBtn" aria-label="Obriši pretragu">✕</button>
+      </div>
+      <button class="scan-btn" id="scanBtn" aria-label="Skeniraj kod">▤</button>
+    </div>
+  </div>
+ 
+  <div class="upload-section">
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">↑</div>
+      <div class="upload-texts">
+        <div class="upload-label" id="uploadLabel">Učitaj Excel datoteku</div>
+        <div class="upload-hint" id="uploadHint">.xlsx ili .xls format</div>
+      </div>
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  </div>
+ 
+  <div class="loading" id="loadingEl">
+    <div class="spinner"></div>
+    <div class="loading-text">Učitavanje podataka…</div>
+  </div>
+ 
+  <div class="empty-state show" id="emptyState">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">Nema učitanih podataka</div>
+    <div class="empty-sub">Učitaj Excel datoteku sa popisom proizvoda</div>
+  </div>
+ 
+  <div class="no-results" id="noResults">
+    <div class="no-results-text">Nema rezultata za "<span class="no-results-query" id="noResultsQuery"></span>"</div>
+  </div>
+ 
+  <div id="sectionLabel" class="section-label" style="display:none"></div>
+  <div class="product-list" id="productList"></div>
+</div>
+ 
+<!-- Column mapper sheet -->
+<div class="mapper-overlay" id="mapperOverlay">
+  <div class="mapper-sheet">
+    <div class="mapper-title">Postavi stupce</div>
+    <div class="mapper-sub">Odaberi koji stupac odgovara kojoj informaciji</div>
+    <div id="mapperRows"></div>
+    <button class="mapper-confirm" id="mapperConfirm">Potvrdi i učitaj</button>
+  </div>
+</div>
+ 
+<!-- Scan sheet -->
+<div class="mapper-overlay" id="scanOverlay">
+  <div class="scan-sheet">
+    <div class="scan-title">Skeniraj kod</div>
+    <div class="scan-sub">Usmjeri kameru na barkod ili šifru proizvoda</div>
+    <div id="qrReader"></div>
+    <div class="scan-manual">
+      <div class="scan-manual-label">Ili ručno unesi šifru:</div>
+      <div class="search-wrap" style="gap:8px;">
+        <div class="search-input-wrap" style="flex:1;">
+          <input class="search-input" id="manualCodeInput" type="text" placeholder="Šifra…" style="padding-left:16px;" autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+    <button class="scan-cancel" id="scanCancelBtn">Zatvori</button>
+  </div>
+</div>
+ 
+<!-- Order sheet -->
+<div class="mapper-overlay" id="orderOverlay">
+  <div class="order-sheet">
+    <div class="order-header-row">
+      <div class="order-title">Narudžba</div>
+      <button class="order-close" id="orderCloseBtn">✕</button>
+    </div>
+    <div class="order-sub" id="orderSub">0 stavki</div>
+    <div id="orderList"></div>
+    <div class="order-actions" id="orderActionsRow" style="display:none">
+      <button class="order-action-btn" id="exportCsvBtn">⬇ CSV</button>
+      <button class="order-action-btn primary" id="printOrderBtn">🖨 Ispis</button>
+    </div>
+    <button class="order-clear" id="orderClearBtn" style="display:none">Isprazni narudžbu</button>
+  </div>
+</div>
+ 
+<div class="toast" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toastMsg"></span>
+</div>
+ 
+<!-- Hidden print-only area -->
+<div id="printArea">
+  <h1>Narudžba za skladište</h1>
+  <div class="print-date" id="printDate"></div>
+  <table>
+    <thead>
+      <tr><th>Naziv</th><th>Šifra</th><th class="num">Količina</th></tr>
+    </thead>
+    <tbody id="printTableBody"></tbody>
+  </table>
+</div>
+ 
+<script>
+let allProducts = [];
+let rawHeaders = [];
+let rawData = [];
+let colMap = { name: '', sku: '', price: '', stock: '' };
+let orderItems = {}; // keyed by product id -> { id, name, sku, qty }
+ 
+const searchInput = document.getElementById('searchInput');
+const clearBtn = document.getElementById('clearBtn');
+const productList = document.getElementById('productList');
+const emptyState = document.getElementById('emptyState');
+const noResults = document.getElementById('noResults');
+const noResultsQuery = document.getElementById('noResultsQuery');
+const statsPill = document.getElementById('statsPill');
+const sectionLabel = document.getElementById('sectionLabel');
+const loadingEl = document.getElementById('loadingEl');
+const mapperOverlay = document.getElementById('mapperOverlay');
+const mapperRows = document.getElementById('mapperRows');
+const uploadLabel = document.getElementById('uploadLabel');
+const uploadHint = document.getElementById('uploadHint');
+ 
+const cartBtn = document.getElementById('cartBtn');
+const cartBadge = document.getElementById('cartBadge');
+const orderOverlay = document.getElementById('orderOverlay');
+const orderList = document.getElementById('orderList');
+const orderSub = document.getElementById('orderSub');
+const orderActionsRow = document.getElementById('orderActionsRow');
+const orderClearBtn = document.getElementById('orderClearBtn');
+const orderCloseBtn = document.getElementById('orderCloseBtn');
+const scanBtn = document.getElementById('scanBtn');
+const scanOverlay = document.getElementById('scanOverlay');
+const scanCancelBtn = document.getElementById('scanCancelBtn');
+const manualCodeInput = document.getElementById('manualCodeInput');
+let html5QrCode = null;
+ 
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  emptyState.classList.remove('show');
+  loadingEl.classList.add('show');
+ 
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      let data;
+      if (file.name.endsWith('.csv')) {
+        const text = ev.target.result;
+        const lines = text.split('\n').filter(l => l.trim());
+        rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+        rawData = lines.slice(1).map(line => {
+          const vals = line.split(',').map(v => v.trim().replace(/"/g,''));
+          const obj = {};
+          rawHeaders.forEach((h,i) => obj[h] = vals[i] || '');
+          return obj;
+        });
+      } else {
+        const wb = XLSX.read(ev.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        rawHeaders = data.length > 0 ? Object.keys(data[0]) : [];
+        rawData = data;
+      }
+      loadingEl.classList.remove('show');
+      if (rawHeaders.length === 0) { showToast('Datoteka je prazna'); emptyState.classList.add('show'); return; }
+      autoMap();
+      showMapper();
+    } catch(err) {
+      loadingEl.classList.remove('show');
+      showToast('Greška pri čitanju datoteke');
+      emptyState.classList.add('show');
+    }
+  };
+  if (file.name.endsWith('.csv')) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+ 
+function autoMap() {
+  const lower = h => h.toLowerCase();
+  const find = (keys) => rawHeaders.find(h => keys.some(k => lower(h).includes(k))) || '';
+  colMap.name = find(['naziv', 'name', 'ime', 'proizvod', 'artikl', 'opis', 'product', 'item']);
+  colMap.sku = find(['šifra', 'sifra', 'sku', 'kod', 'code', 'id', 'barcode', 'barkod']);
+  colMap.price = find(['cijena', 'cjena', 'price', 'mpc', 'vpc', 'iznos', 'vrijednost']);
+  colMap.stock = find(['stanje', 'zaliha', 'stock', 'qty', 'količina', 'kolicina', 'inventory']);
+}
+ 
+function showMapper() {
+  const fields = [
+    { key: 'name', label: 'Naziv', required: true },
+    { key: 'sku', label: 'Šifra / SKU', required: false },
+    { key: 'price', label: 'Cijena', required: true },
+    { key: 'stock', label: 'Stanje na zalihi', required: false },
+  ];
+  mapperRows.innerHTML = fields.map(f => `
+    <div class="mapper-row">
+      <div class="mapper-label">${f.label}${f.required ? ' <span>*</span>' : ''}</div>
+      <select class="mapper-select" data-key="${f.key}">
+        ${f.required ? '' : '<option value="">— ne koristim —</option>'}
+        ${rawHeaders.map(h => `<option value="${h}" ${colMap[f.key] === h ? 'selected' : ''}>${h}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+  mapperOverlay.classList.add('show');
+}
+ 
+document.getElementById('mapperConfirm').addEventListener('click', function() {
+  mapperOverlay.querySelectorAll('select').forEach(sel => {
+    colMap[sel.dataset.key] = sel.value;
+  });
+  if (!colMap.name || !colMap.price) { showToast('Naziv i cijena su obavezni'); return; }
+  mapperOverlay.classList.remove('show');
+  buildProducts();
+});
+ 
+function buildProducts() {
+  allProducts = rawData.map((row, i) => {
+    const name = String(row[colMap.name] || '').trim();
+    const sku = colMap.sku ? String(row[colMap.sku] || '').trim() : '';
+    return {
+      id: i,
+      name,
+      sku,
+      price: colMap.price ? parseFloat(String(row[colMap.price] || '0').replace(',', '.').replace(/[^\d.]/g, '')) : 0,
+      stock: colMap.stock ? parseInt(row[colMap.stock]) : null,
+      _nameLower: name.toLowerCase(),
+      _skuLower: sku.toLowerCase(),
+    };
+  }).filter(p => p.name);
+ 
+  uploadLabel.textContent = 'Zamijeni datoteku';
+  uploadHint.textContent = `Zadnje učitano: ${new Date().toLocaleTimeString('hr')}`;
+  statsPill.style.display = 'inline';
+  statsPill.textContent = `${allProducts.length} proizvoda`;
+  showToast(`Učitano ${allProducts.length} proizvoda`);
+  renderProducts(allProducts, '');
+}
+ 
+function highlight(text, query) {
+  if (!query) return escHtml(text);
+  const esc = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escHtml(text).replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+ 
+function stockClass(n) {
+  if (n === null || n === undefined || isNaN(n)) return '';
+  if (n <= 0) return 'stock-out';
+  if (n <= 5) return 'stock-low';
+  return 'stock-ok';
+}
+function stockLabel(n) {
+  if (n === null || isNaN(n)) return '';
+  if (n <= 0) return 'rasprodano';
+  if (n <= 5) return `malo: ${n}`;
+  return `${n} kom`;
+}
+ 
+function formatPrice(p) {
+  if (isNaN(p)) return '—';
+  return p.toLocaleString('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+ 
+function renderProducts(list, query) {
+  emptyState.classList.remove('show');
+  noResults.classList.remove('show');
+  productList.innerHTML = '';
+ 
+  if (allProducts.length === 0) {
+    emptyState.classList.add('show');
+    sectionLabel.style.display = 'none';
+    return;
+  }
+  if (list.length === 0) {
+    noResultsQuery.textContent = query;
+    noResults.classList.add('show');
+    sectionLabel.style.display = 'none';
+    return;
+  }
+ 
+  sectionLabel.style.display = 'block';
+  sectionLabel.textContent = query ? `${list.length} rezultata` : 'Svi proizvodi';
+ 
+  const frag = document.createDocumentFragment();
+  list.forEach(p => {
+    const sc = stockClass(p.stock);
+    const sl = stockLabel(p.stock);
+    const inOrder = orderItems[p.id];
+    const card = document.createElement('div');
+    card.className = 'product-card' + (inOrder ? ' in-order' : '');
+    card.dataset.id = p.id;
+    card.innerHTML = `
+      <div class="prod-info">
+        <div class="prod-name">${highlight(p.name, query)}</div>
+        <div class="prod-meta">
+          ${p.sku ? `<span class="prod-sku">${highlight(p.sku, query)}</span>` : ''}
+          ${sc ? `<span class="stock-badge ${sc}">${sl}</span>` : ''}
+        </div>
+      </div>
+      <div class="prod-right">
+        <div class="prod-price">${formatPrice(p.price)}</div>
+        ${p.stock !== null && !isNaN(p.stock) && !sc ? `<div class="prod-stock-num">${p.stock} kom</div>` : ''}
+        ${inOrder ? `
+          <div class="order-stepper">
+            <button class="stepper-btn" data-action="dec" data-id="${p.id}">−</button>
+            <span class="stepper-qty">${inOrder.qty}</span>
+            <button class="stepper-btn" data-action="inc" data-id="${p.id}">+</button>
+          </div>
+        ` : `<button class="order-add-btn" data-action="add" data-id="${p.id}">+ Naruči</button>`}
+      </div>
+    `;
+    frag.appendChild(card);
+  });
+  productList.appendChild(frag);
+}
+ 
+// Delegated click handling for order stepper / add buttons
+productList.addEventListener('click', function(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id);
+  const action = btn.dataset.action;
+  const product = allProducts.find(p => p.id === id);
+  if (!product) return;
+ 
+  if (action === 'add' || action === 'inc') {
+    if (!orderItems[id]) orderItems[id] = { id: product.id, name: product.name, sku: product.sku, qty: 0 };
+    orderItems[id].qty += 1;
+    if (action === 'add') showToast(`Dodano u narudžbu: ${product.name}`);
+  } else if (action === 'dec') {
+    if (orderItems[id]) {
+      orderItems[id].qty -= 1;
+      if (orderItems[id].qty <= 0) delete orderItems[id];
+    }
+  }
+  saveOrder();
+  updateCartBadge();
+  doSearch(searchInput.value);
+});
+ 
+function doSearch(q) {
+  const query = q.trim().toLowerCase();
+  clearBtn.classList.toggle('show', q.length > 0);
+  if (!query) { renderProducts(allProducts, ''); return allProducts; }
+  const results = allProducts.filter(p =>
+    (p._nameLower || p.name.toLowerCase()).includes(query) ||
+    (p._skuLower || p.sku.toLowerCase()).includes(query)
+  );
+  renderProducts(results, query);
+  return results;
+}
+ 
+let searchDebounceTimer;
+searchInput.addEventListener('input', e => {
+  const val = e.target.value;
+  clearBtn.classList.toggle('show', val.length > 0);
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => doSearch(val), 120);
+});
+clearBtn.addEventListener('click', () => { searchInput.value = ''; clearBtn.classList.remove('show'); clearTimeout(searchDebounceTimer); doSearch(''); searchInput.focus(); });
+ 
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+ 
+/* ---------------- ORDER (warehouse) ---------------- */
+ 
+function updateCartBadge() {
+  const count = Object.values(orderItems).reduce((s, it) => s + it.qty, 0);
+  cartBadge.textContent = count;
+  cartBadge.classList.toggle('show', count > 0);
+}
+ 
+function saveOrder() {
+  try { localStorage.setItem('provjera_order', JSON.stringify(orderItems)); } catch(e) {}
+}
+ 
+function loadOrder() {
+  try {
+    const saved = localStorage.getItem('provjera_order');
+    if (saved) orderItems = JSON.parse(saved);
+  } catch(e) {}
+  updateCartBadge();
+}
+ 
+function renderOrderSheet() {
+  const items = Object.values(orderItems);
+  const totalQty = items.reduce((s, it) => s + it.qty, 0);
+  orderSub.textContent = items.length === 0 ? 'Narudžba je prazna' : `${items.length} stavki · ${totalQty} kom ukupno`;
+ 
+  if (items.length === 0) {
+    orderList.innerHTML = `<div class="order-empty">Nema stavki u narudžbi.<br>Skeniraj ili pretraži proizvode i dodaj ih ovdje.</div>`;
+    orderActionsRow.style.display = 'none';
+    orderClearBtn.style.display = 'none';
+    return;
+  }
+ 
+  orderActionsRow.style.display = 'flex';
+  orderClearBtn.style.display = 'block';
+  orderList.innerHTML = items.map(it => `
+    <div class="order-item">
+      <div class="order-item-info">
+        <div class="order-item-name">${escHtml(it.name)}</div>
+        ${it.sku ? `<div class="order-item-sku">${escHtml(it.sku)}</div>` : ''}
+      </div>
+      <div class="order-stepper">
+        <button class="stepper-btn" data-oaction="dec" data-oid="${it.id}">−</button>
+        <span class="stepper-qty">${it.qty}</span>
+        <button class="stepper-btn" data-oaction="inc" data-oid="${it.id}">+</button>
+      </div>
+      <button class="order-item-remove" data-oaction="remove" data-oid="${it.id}">✕</button>
+    </div>
+  `).join('');
+}
+ 
+orderList.addEventListener('click', function(e) {
+  const btn = e.target.closest('button[data-oaction]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.oid);
+  const action = btn.dataset.oaction;
+  if (!orderItems[id]) return;
+  if (action === 'inc') orderItems[id].qty += 1;
+  else if (action === 'dec') { orderItems[id].qty -= 1; if (orderItems[id].qty <= 0) delete orderItems[id]; }
+  else if (action === 'remove') delete orderItems[id];
+  saveOrder();
+  updateCartBadge();
+  renderOrderSheet();
+  doSearch(searchInput.value);
+});
+ 
+cartBtn.addEventListener('click', () => { renderOrderSheet(); orderOverlay.classList.add('show'); });
+orderCloseBtn.addEventListener('click', () => orderOverlay.classList.remove('show'));
+orderOverlay.addEventListener('click', (e) => { if (e.target === orderOverlay) orderOverlay.classList.remove('show'); });
+ 
+orderClearBtn.addEventListener('click', () => {
+  if (!confirm('Isprazniti cijelu narudžbu?')) return;
+  orderItems = {};
+  saveOrder();
+  updateCartBadge();
+  renderOrderSheet();
+  doSearch(searchInput.value);
+});
+ 
+function todayStr() {
+  const d = new Date();
+  return d.toLocaleDateString('hr-HR') + ' ' + d.toLocaleTimeString('hr-HR', {hour:'2-digit', minute:'2-digit'});
+}
+ 
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const items = Object.values(orderItems);
+  if (items.length === 0) return;
+  let csv = 'Naziv;Šifra;Količina\n';
+  items.forEach(it => {
+    csv += `"${it.name.replace(/"/g,'""')}";"${it.sku || ''}";${it.qty}\n`;
+  });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `narudzba_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('CSV izvezen');
+});
+ 
+document.getElementById('printOrderBtn').addEventListener('click', () => {
+  const items = Object.values(orderItems);
+  if (items.length === 0) return;
+  document.getElementById('printDate').textContent = todayStr();
+  document.getElementById('printTableBody').innerHTML = items.map(it => `
+    <tr>
+      <td>${escHtml(it.name)}</td>
+      <td>${escHtml(it.sku || '—')}</td>
+      <td class="num">${it.qty}</td>
+    </tr>
+  `).join('');
+  window.print();
+});
+ 
+/* ---------------- SCANNER ---------------- */
+ 
+function openScanner() {
+  scanOverlay.classList.add('show');
+  manualCodeInput.value = '';
+  if (typeof Html5Qrcode === 'undefined') {
+    document.getElementById('qrReader').innerHTML = '<div style="color:#888;padding:20px;text-align:center;font-size:13px;">Skener nije dostupan (nema internetske veze za učitavanje biblioteke). Koristi ručni unos ispod.</div>';
+    return;
+  }
+  html5QrCode = new Html5Qrcode("qrReader");
+  const config = { fps: 10, qrbox: { width: 250, height: 130 } };
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    onScanSuccess,
+    () => {}
+  ).catch(() => {
+    document.getElementById('qrReader').innerHTML = '<div style="color:#888;padding:20px;text-align:center;font-size:13px;">Nije moguće pristupiti kameri. Provjeri dozvole ili koristi ručni unos ispod.</div>';
+  });
+}
+ 
+function closeScanner() {
+  scanOverlay.classList.remove('show');
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => html5QrCode.clear()).catch(() => {});
+    html5QrCode = null;
+  }
+}
+ 
+function onScanSuccess(decodedText) {
+  handleScannedCode(decodedText);
+}
+ 
+function handleScannedCode(code) {
+  closeScanner();
+  searchInput.value = code;
+  const results = doSearch(code) || [];
+  if (results.length === 1) {
+    const p = results[0];
+    if (!orderItems[p.id]) orderItems[p.id] = { id: p.id, name: p.name, sku: p.sku, qty: 0 };
+    orderItems[p.id].qty += 1;
+    saveOrder();
+    updateCartBadge();
+    doSearch(code);
+    showToast(`Skenirano: ${p.name} (${orderItems[p.id].qty} kom u narudžbi)`);
+  } else if (results.length > 1) {
+    showToast(`Pronađeno ${results.length} rezultata za "${code}"`);
+  } else {
+    showToast(`Nema proizvoda za kod "${code}"`);
+  }
+}
+ 
+scanBtn.addEventListener('click', openScanner);
+scanCancelBtn.addEventListener('click', closeScanner);
+manualCodeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && manualCodeInput.value.trim()) {
+    handleScannedCode(manualCodeInput.value.trim());
+  }
+});
+ 
+/* ---------------- INIT / PERSISTENCE ---------------- */
+ 
+try {
+  const saved = localStorage.getItem('provjera_products');
+  const savedMap = localStorage.getItem('provjera_colmap');
+  if (saved) {
+    allProducts = JSON.parse(saved);
+    allProducts.forEach(p => {
+      if (p._nameLower === undefined) p._nameLower = (p.name || '').toLowerCase();
+      if (p._skuLower === undefined) p._skuLower = (p.sku || '').toLowerCase();
+    });
+    if (savedMap) colMap = JSON.parse(savedMap);
+    statsPill.style.display = 'inline';
+    statsPill.textContent = `${allProducts.length} proizvoda`;
+    uploadLabel.textContent = 'Zamijeni datoteku';
+    uploadHint.textContent = 'Podaci su sačuvani lokalno';
+    renderProducts(allProducts, '');
+  }
+} catch(e) {}
+ 
+loadOrder();
+ 
+const _origBuild = buildProducts;
+window.buildProducts = function() {
+  _origBuild();
+  try {
+    localStorage.setItem('provjera_products', JSON.stringify(allProducts));
+    localStorage.setItem('provjera_colmap', JSON.stringify(colMap));
+  } catch(e) {}
+};
+</script>
+</body>
+</html>
+ 
