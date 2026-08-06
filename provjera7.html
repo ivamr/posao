@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cijene">
+<title>Provjera cijena</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script defer src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  :root {
+    --bg: #0e0e10;
+    --surface: #1a1a1f;
+    --surface2: #24242b;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0f0f0;
+    --muted: #888;
+    --faint: #444;
+    --accent: #c8f060;
+    --accent-dim: rgba(200,240,96,0.12);
+    --accent-text: #1a2200;
+    --red: #ff6b6b;
+    --yellow: #ffd166;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+ 
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+ 
+  .app {
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 0 0 80px;
+    min-height: 100vh;
+  }
+ 
+  .header {
+    padding: 56px 20px 20px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+  .app-title {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+  .app-title span {
+    color: var(--accent);
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stats-pill {
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,240,96,0.25);
+    color: var(--accent);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .cart-btn {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .cart-btn:active { background: var(--surface2); }
+  .cart-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+  }
+  .cart-badge.show { display: flex; }
+ 
+  .search-wrap {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .search-input-wrap { position: relative; flex: 1; }
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 16px 12px 42px;
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 17px;
+    pointer-events: none;
+  }
+  .clear-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--surface2);
+    border: none;
+    color: var(--muted);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 13px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .clear-btn.show { display: flex; }
+  .scan-btn {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--accent);
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .scan-btn:active { background: var(--surface2); }
+ 
+  .upload-section {
+    padding: 20px;
+  }
+  .upload-btn {
+    width: 100%;
+    background: var(--surface);
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .upload-btn:active {
+    background: var(--surface2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .upload-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .upload-texts { flex: 1; }
+  .upload-label { font-weight: 500; color: var(--text); font-size: 14px; }
+  .upload-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #fileInput { display: none; }
+ 
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    display: none;
+  }
+  .empty-state.show { display: block; }
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.3;
+  }
+  .empty-title { font-size: 16px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; color: var(--faint); }
+ 
+  .no-results {
+    padding: 40px 24px;
+    text-align: center;
+    display: none;
+  }
+  .no-results.show { display: block; }
+  .no-results-text { font-size: 14px; color: var(--muted); }
+  .no-results-query { color: var(--text); font-weight: 500; }
+ 
+  .section-label {
+    padding: 6px 20px 8px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+ 
+  .product-list {
+    padding: 0 12px;
+  }
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.15s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .product-card.in-order {
+    border-color: rgba(200,240,96,0.35);
+  }
+  .prod-info { flex: 1; min-width: 0; }
+  .prod-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .prod-name mark {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+  .prod-meta {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .prod-sku { color: var(--faint); }
+  .stock-badge {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .stock-ok { background: rgba(200,240,96,0.1); color: var(--accent); border: 1px solid rgba(200,240,96,0.2); }
+  .stock-low { background: rgba(255,209,102,0.1); color: var(--yellow); border: 1px solid rgba(255,209,102,0.2); }
+  .stock-out { background: rgba(255,107,107,0.1); color: var(--red); border: 1px solid rgba(255,107,107,0.2); }
+ 
+  .prod-right { text-align: right; flex-shrink: 0; }
+  .prod-price {
+    font-size: 17px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .prod-stock-num {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+ 
+  .order-add-btn {
+    margin-top: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .order-add-btn:active { border-color: var(--accent); color: var(--accent); }
+  .order-stepper {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .stepper-btn {
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,240,96,0.3);
+    color: var(--accent);
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stepper-qty {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 18px;
+    text-align: center;
+  }
+ 
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 30px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+ 
+  .loading {
+    padding: 40px 24px;
+    text-align: center;
+    display: none;
+  }
+  .loading.show { display: block; }
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--muted); }
+ 
+  .mapper-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 50;
+    display: none;
+    align-items: flex-end;
+    padding: 12px;
+  }
+  .mapper-overlay.show { display: flex; }
+  .mapper-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .mapper-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .mapper-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .mapper-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .mapper-label { font-size: 13px; color: var(--text); font-weight: 500; }
+  .mapper-label span { color: var(--red); }
+  .mapper-select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    min-width: 160px;
+  }
+  .mapper-confirm {
+    width: 100%;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius);
+    padding: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .mapper-confirm:active { opacity: 0.85; }
+ 
+  .scan-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .scan-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .scan-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  #qrReader {
+    width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #000;
+  }
+  #qrReader video { border-radius: var(--radius); }
+  .scan-cancel {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 14px;
+  }
+  .scan-cancel:active { background: var(--border2); }
+  .scan-manual {
+    margin-top: 14px;
+  }
+  .scan-manual-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+ 
+  .order-sheet {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .order-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .order-title { font-size: 16px; font-weight: 600; }
+  .order-close {
+    background: var(--surface2);
+    border: none;
+    color: var(--muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .order-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+  .order-empty {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .order-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .order-item-info { flex: 1; min-width: 0; }
+  .order-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .order-item-sku {
+    font-size: 11px;
+    color: var(--faint);
+    font-family: 'DM Mono', monospace;
+    margin-top: 2px;
+  }
+  .order-item-remove {
+    background: none;
+    border: none;
+    color: var(--red);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .order-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .order-action-btn {
+    flex: 1 1 calc(50% - 4px);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 13px 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+  }
+  .order-action-btn.primary {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+  }
+  .order-action-btn:active { opacity: 0.85; }
+  .order-clear {
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--red);
+    font-size: 13px;
+    padding: 12px;
+    margin-top: 6px;
+    cursor: pointer;
+  }
+ 
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea {
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      color: #000;
+      background: #fff;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    #printArea h1 { font-size: 20px; margin-bottom: 4px; }
+    #printArea .print-date { font-size: 12px; color: #444; margin-bottom: 16px; }
+    #printArea table { width: 100%; border-collapse: collapse; }
+    #printArea th, #printArea td {
+      border: 1px solid #999;
+      padding: 6px 8px;
+      font-size: 12px;
+      text-align: left;
+    }
+    #printArea th { background: #eee; }
+    #printArea td.num { text-align: right; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">Provjera<span>.</span></div>
+      <div class="header-right">
+        <div class="stats-pill" id="statsPill" style="display:none">0 proizvoda</div>
+        <button class="cart-btn" id="cartBtn" aria-label="Narudžba">
+          🛒<span class="cart-badge" id="cartBadge">0</span>
+        </button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <div class="search-input-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" id="searchInput" type="search" placeholder="Pretraži naziv ili šifru…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="clear-btn" id="clearBtn" aria-label="Obriši pretragu">✕</button>
+      </div>
+      <button class="scan-btn" id="scanBtn" aria-label="Skeniraj kod">▤</button>
+    </div>
+  </div>
+ 
+  <div class="upload-section">
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">↑</div>
+      <div class="upload-texts">
+        <div class="upload-label" id="uploadLabel">Učitaj Excel datoteku</div>
+        <div class="upload-hint" id="uploadHint">.xlsx ili .xls format</div>
+      </div>
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  </div>
+ 
+  <div class="loading" id="loadingEl">
+    <div class="spinner"></div>
+    <div class="loading-text">Učitavanje podataka…</div>
+  </div>
+ 
+  <div class="empty-state show" id="emptyState">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">Nema učitanih podataka</div>
+    <div class="empty-sub">Učitaj Excel datoteku sa popisom proizvoda</div>
+  </div>
+ 
+  <div class="no-results" id="noResults">
+    <div class="no-results-text">Nema rezultata za "<span class="no-results-query" id="noResultsQuery"></span>"</div>
+  </div>
+ 
+  <div id="sectionLabel" class="section-label" style="display:none"></div>
+  <div class="product-list" id="productList"></div>
+</div>
+ 
+<div class="mapper-overlay" id="mapperOverlay">
+  <div class="mapper-sheet">
+    <div class="mapper-title">Postavi stupce</div>
+    <div class="mapper-sub">Odaberi koji stupac odgovara kojoj informaciji</div>
+    <div id="mapperRows"></div>
+    <button class="mapper-confirm" id="mapperConfirm">Potvrdi i učitaj</button>
+  </div>
+</div>
+ 
+<div class="mapper-overlay" id="mergeOverlay">
+  <div class="mapper-sheet">
+    <div class="mapper-title">Već postoje učitani proizvodi</div>
+    <div class="mapper-sub">Želiš li zamijeniti cijeli popis novom datotekom ili samo dodati nove proizvode koji još ne postoje na popisu?</div>
+    <button class="mapper-confirm" id="mergeAddBtn">Dodaj samo nove proizvode</button>
+    <button class="mapper-confirm" id="mergeReplaceBtn" style="background:var(--surface2); color:var(--text); border:1px solid var(--border2);">Zamijeni cijeli popis</button>
+    <button class="scan-cancel" id="mergeCancelBtn">Odustani</button>
+  </div>
+</div>
+ 
+<div class="mapper-overlay" id="scanOverlay">
+  <div class="scan-sheet">
+    <div class="scan-title">Skeniraj kod</div>
+    <div class="scan-sub">Usmjeri kameru na barkod ili šifru proizvoda</div>
+    <div id="qrReader"></div>
+    <div class="scan-manual">
+      <div class="scan-manual-label">Ili ručno unesi šifru:</div>
+      <div class="search-wrap" style="gap:8px;">
+        <div class="search-input-wrap" style="flex:1;">
+          <input class="search-input" id="manualCodeInput" type="text" placeholder="Šifra…" style="padding-left:16px;" autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+    <button class="scan-cancel" id="scanCancelBtn">Zatvori</button>
+  </div>
+</div>
+ 
+<div class="mapper-overlay" id="orderOverlay">
+  <div class="order-sheet">
+    <div class="order-header-row">
+      <div class="order-title">Narudžba</div>
+      <button class="order-close" id="orderCloseBtn">✕</button>
+    </div>
+    <div class="order-sub" id="orderSub">0 stavki</div>
+    <div id="orderList"></div>
+    <div class="order-actions" id="orderActionsRow" style="display:none">
+      <button class="order-action-btn" id="exportCsvBtn">⬇ CSV</button>
+      <button class="order-action-btn" id="exportExcelBtn">⬇ Excel</button>
+      <button class="order-action-btn" id="exportPdfBtn">⬇ PDF</button>
+      <button class="order-action-btn" id="exportWordBtn">⬇ Word</button>
+      <button class="order-action-btn primary" id="printOrderBtn">🖨 Ispis</button>
+    </div>
+    <button class="order-clear" id="orderClearBtn" style="display:none">Isprazni narudžbu</button>
+  </div>
+</div>
+ 
+<div class="toast" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toastMsg"></span>
+</div>
+ 
+<div id="printArea">
+  <h1>Narudžba za skladište</h1>
+  <div class="print-date" id="printDate"></div>
+  <table>
+    <thead>
+      <tr><th>Naziv</th><th>Šifra</th><th class="num">Količina</th></tr>
+    </thead>
+    <tbody id="printTableBody"></tbody>
+  </table>
+</div>
+ 
+<script>
+let allProducts = [];
+let productsById = Object.create(null);
+let rawHeaders = [];
+let rawData = [];
+let colMap = { name: '', sku: '', price: '', stock: '' };
+let orderItems = {};
+let searchDebounceTimer = null;
+const RENDER_LIMIT = 150; // cap DOM nodes per render so typing/scrolling stays snappy on big catalogs
+ 
+const searchInput = document.getElementById('searchInput');
+const clearBtn = document.getElementById('clearBtn');
+const productList = document.getElementById('productList');
+const emptyState = document.getElementById('emptyState');
+const noResults = document.getElementById('noResults');
+const noResultsQuery = document.getElementById('noResultsQuery');
+const statsPill = document.getElementById('statsPill');
+const sectionLabel = document.getElementById('sectionLabel');
+const loadingEl = document.getElementById('loadingEl');
+const mapperOverlay = document.getElementById('mapperOverlay');
+const mapperRows = document.getElementById('mapperRows');
+const uploadLabel = document.getElementById('uploadLabel');
+const uploadHint = document.getElementById('uploadHint');
+const mergeOverlay = document.getElementById('mergeOverlay');
+ 
+const cartBtn = document.getElementById('cartBtn');
+const cartBadge = document.getElementById('cartBadge');
+const orderOverlay = document.getElementById('orderOverlay');
+const orderList = document.getElementById('orderList');
+const orderSub = document.getElementById('orderSub');
+const orderActionsRow = document.getElementById('orderActionsRow');
+const orderClearBtn = document.getElementById('orderClearBtn');
+const orderCloseBtn = document.getElementById('orderCloseBtn');
+const scanBtn = document.getElementById('scanBtn');
+const scanOverlay = document.getElementById('scanOverlay');
+const scanCancelBtn = document.getElementById('scanCancelBtn');
+const manualCodeInput = document.getElementById('manualCodeInput');
+let html5QrCode = null;
+let scannerStarting = false;
+ 
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  emptyState.classList.remove('show');
+  loadingEl.classList.add('show');
+ 
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      let data;
+      if (file.name.endsWith('.csv')) {
+        const text = ev.target.result;
+        const lines = text.split('\n').filter(l => l.trim());
+        rawHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+        rawData = lines.slice(1).map(line => {
+          const vals = line.split(',').map(v => v.trim().replace(/"/g,''));
+          const obj = {};
+          rawHeaders.forEach((h,i) => obj[h] = vals[i] || '');
+          return obj;
+        });
+      } else {
+        const wb = XLSX.read(ev.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        rawHeaders = data.length > 0 ? Object.keys(data[0]) : [];
+        rawData = data;
+      }
+      loadingEl.classList.remove('show');
+      if (rawHeaders.length === 0) { showToast('Datoteka je prazna'); if (allProducts.length === 0) emptyState.classList.add('show'); return; }
+      autoMap();
+      showMapper();
+    } catch(err) {
+      loadingEl.classList.remove('show');
+      showToast('Greška pri čitanju datoteke');
+      if (allProducts.length === 0) emptyState.classList.add('show');
+    }
+  };
+  if (file.name.endsWith('.csv')) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+  e.target.value = '';
+});
+ 
+function autoMap() {
+  const lower = h => h.toLowerCase();
+  const find = (keys) => rawHeaders.find(h => keys.some(k => lower(h).includes(k))) || '';
+  colMap.name = find(['naziv', 'name', 'ime', 'proizvod', 'artikl', 'opis', 'product', 'item']);
+  colMap.sku = find(['šifra', 'sifra', 'sku', 'kod', 'code', 'id', 'barcode', 'barkod']);
+  colMap.price = find(['cijena', 'cjena', 'price', 'mpc', 'vpc', 'iznos', 'vrijednost']);
+  colMap.stock = find(['stanje', 'zaliha', 'stock', 'qty', 'količina', 'kolicina', 'inventory']);
+}
+ 
+function showMapper() {
+  const fields = [
+    { key: 'name', label: 'Naziv', required: true },
+    { key: 'sku', label: 'Šifra / SKU', required: false },
+    { key: 'price', label: 'Cijena', required: true },
+    { key: 'stock', label: 'Stanje na zalihi', required: false },
+  ];
+  mapperRows.innerHTML = fields.map(f => `
+    <div class="mapper-row">
+      <div class="mapper-label">${f.label}${f.required ? ' <span>*</span>' : ''}</div>
+      <select class="mapper-select" data-key="${f.key}">
+        ${f.required ? '' : '<option value="">— ne koristim —</option>'}
+        ${rawHeaders.map(h => `<option value="${h}" ${colMap[f.key] === h ? 'selected' : ''}>${h}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+  mapperOverlay.classList.add('show');
+}
+ 
+document.getElementById('mapperConfirm').addEventListener('click', function() {
+  mapperOverlay.querySelectorAll('select').forEach(sel => {
+    colMap[sel.dataset.key] = sel.value;
+  });
+  if (!colMap.name || !colMap.price) { showToast('Naziv i cijena su obavezni'); return; }
+  mapperOverlay.classList.remove('show');
+  // If there's already a loaded product list, ask whether to replace it entirely
+  // or just append the new rows as additional articles.
+  if (allProducts.length > 0) {
+    mergeOverlay.classList.add('show');
+  } else {
+    buildProducts('replace');
+  }
+});
+ 
+document.getElementById('mergeAddBtn').addEventListener('click', function() {
+  mergeOverlay.classList.remove('show');
+  buildProducts('merge');
+});
+document.getElementById('mergeReplaceBtn').addEventListener('click', function() {
+  mergeOverlay.classList.remove('show');
+  buildProducts('replace');
+});
+document.getElementById('mergeCancelBtn').addEventListener('click', function() {
+  mergeOverlay.classList.remove('show');
+});
+ 
+function rebuildIndex() {
+  productsById = Object.create(null);
+  for (let i = 0; i < allProducts.length; i++) {
+    productsById[allProducts[i].id] = allProducts[i];
+  }
+}
+ 
+// mode: 'replace' wipes the existing list and loads only the new file.
+// mode: 'merge' keeps existing products and appends rows from the new file
+// that don't already exist (matched by šifra/SKU when both sides have one,
+// otherwise matched by name, case-insensitive).
+function buildProducts(mode) {
+  mode = mode || 'replace';
+ 
+  const parsed = rawData.map((row) => {
+    const name = String(row[colMap.name] || '').trim();
+    const sku = colMap.sku ? String(row[colMap.sku] || '').trim() : '';
+    return {
+      name,
+      sku,
+      nameLower: name.toLowerCase(),
+      skuLower: sku.toLowerCase(),
+      price: colMap.price ? parseFloat(String(row[colMap.price] || '0').replace(',', '.').replace(/[^\d.]/g, '')) : 0,
+      stock: colMap.stock ? parseInt(row[colMap.stock]) : null,
+    };
+  }).filter(p => p.name);
+ 
+  if (mode === 'replace' || allProducts.length === 0) {
+    allProducts = parsed.map((p, i) => ({ id: i, ...p }));
+    showToast(`Učitano ${allProducts.length} proizvoda`);
+  } else {
+    let nextId = allProducts.reduce((m, p) => Math.max(m, p.id), -1) + 1;
+    const existingBySku = new Map();
+    const existingByName = new Map();
+    allProducts.forEach(p => {
+      if (p.sku) existingBySku.set(p.skuLower, p);
+      existingByName.set(p.nameLower, p);
+    });
+ 
+    let added = 0, skipped = 0;
+    parsed.forEach(p => {
+      const isDuplicate = (p.sku && existingBySku.has(p.skuLower)) || existingByName.has(p.nameLower);
+      if (isDuplicate) { skipped++; return; }
+      const newProduct = { id: nextId++, ...p };
+      allProducts.push(newProduct);
+      if (newProduct.sku) existingBySku.set(newProduct.skuLower, newProduct);
+      existingByName.set(newProduct.nameLower, newProduct);
+      added++;
+    });
+    showToast(skipped > 0
+      ? `Dodano ${added} novih proizvoda (${skipped} već postoji, preskočeno)`
+      : `Dodano ${added} novih proizvoda`);
+  }
+ 
+  rebuildIndex();
+ 
+  uploadLabel.textContent = 'Zamijeni ili dodaj proizvode';
+  uploadHint.textContent = `Zadnje učitano: ${new Date().toLocaleTimeString('hr')}`;
+  statsPill.style.display = 'inline';
+  statsPill.textContent = `${allProducts.length} proizvoda`;
+  renderProducts(allProducts, '');
+}
+ 
+function highlight(text, query) {
+  if (!query) return escHtml(text);
+  const esc = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escHtml(text).replace(new RegExp(`(${esc})`, 'gi'), '<mark>$1</mark>');
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+ 
+function stockClass(n) {
+  if (n === null || n === undefined || isNaN(n)) return '';
+  if (n <= 0) return 'stock-out';
+  if (n <= 5) return 'stock-low';
+  return 'stock-ok';
+}
+function stockLabel(n) {
+  if (n === null || isNaN(n)) return '';
+  if (n <= 0) return 'rasprodano';
+  if (n <= 5) return `malo: ${n}`;
+  return `${n} kom`;
+}
+ 
+function formatPrice(p) {
+  if (isNaN(p)) return '—';
+  return p.toLocaleString('hr-HR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+ 
+function renderProducts(list, query) {
+  emptyState.classList.remove('show');
+  noResults.classList.remove('show');
+  productList.innerHTML = '';
+ 
+  if (allProducts.length === 0) {
+    emptyState.classList.add('show');
+    sectionLabel.style.display = 'none';
+    return;
+  }
+  if (list.length === 0) {
+    noResultsQuery.textContent = query;
+    noResults.classList.add('show');
+    sectionLabel.style.display = 'none';
+    return;
+  }
+ 
+  const total = list.length;
+  const truncated = total > RENDER_LIMIT;
+  const visibleList = truncated ? list.slice(0, RENDER_LIMIT) : list;
+ 
+  sectionLabel.style.display = 'block';
+  if (truncated) {
+    sectionLabel.textContent = query
+      ? `Prikazano ${RENDER_LIMIT} od ${total} rezultata — suzi pretragu za više`
+      : `Prikazano prvih ${RENDER_LIMIT} od ${total} — koristi pretragu za ostatak`;
+  } else {
+    sectionLabel.textContent = query ? `${total} rezultata` : 'Svi proizvodi';
+  }
+ 
+  const frag = document.createDocumentFragment();
+  visibleList.forEach(p => {
+    const sc = stockClass(p.stock);
+    const sl = stockLabel(p.stock);
+    const inOrder = orderItems[p.id];
+    const card = document.createElement('div');
+    card.className = 'product-card' + (inOrder ? ' in-order' : '');
+    card.dataset.id = p.id;
+    card.innerHTML = `
+      <div class="prod-info">
+        <div class="prod-name">${highlight(p.name, query)}</div>
+        <div class="prod-meta">
+          ${p.sku ? `<span class="prod-sku">${highlight(p.sku, query)}</span>` : ''}
+          ${sc ? `<span class="stock-badge ${sc}">${sl}</span>` : ''}
+        </div>
+      </div>
+      <div class="prod-right">
+        <div class="prod-price">${formatPrice(p.price)}</div>
+        ${p.stock !== null && !isNaN(p.stock) && !sc ? `<div class="prod-stock-num">${p.stock} kom</div>` : ''}
+        ${inOrder ? `
+          <div class="order-stepper">
+            <button class="stepper-btn" data-action="dec" data-id="${p.id}">−</button>
+            <span class="stepper-qty">${inOrder.qty}</span>
+            <button class="stepper-btn" data-action="inc" data-id="${p.id}">+</button>
+          </div>
+        ` : `<button class="order-add-btn" data-action="add" data-id="${p.id}">+ Naruči</button>`}
+      </div>
+    `;
+    frag.appendChild(card);
+  });
+  productList.appendChild(frag);
+}
+ 
+// Patches just one product card's right-hand control in place (no full re-render).
+// This is what makes +/- taps feel instant even with thousands of products loaded.
+function updateProductCardUI(id) {
+  const card = productList.querySelector(`.product-card[data-id="${id}"]`);
+  if (!card) return; // card may not be in the currently rendered/truncated view
+  const inOrder = orderItems[id];
+  card.classList.toggle('in-order', !!inOrder);
+  const right = card.querySelector('.prod-right');
+  const existing = right.querySelector('.order-stepper, .order-add-btn');
+  if (existing) existing.remove();
+  if (inOrder) {
+    const div = document.createElement('div');
+    div.className = 'order-stepper';
+    div.innerHTML = `<button class="stepper-btn" data-action="dec" data-id="${id}">−</button><span class="stepper-qty">${inOrder.qty}</span><button class="stepper-btn" data-action="inc" data-id="${id}">+</button>`;
+    right.appendChild(div);
+  } else {
+    const b = document.createElement('button');
+    b.className = 'order-add-btn';
+    b.dataset.action = 'add';
+    b.dataset.id = String(id);
+    b.textContent = '+ Naruči';
+    right.appendChild(b);
+  }
+}
+ 
+productList.addEventListener('click', function(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id);
+  const action = btn.dataset.action;
+  const product = productsById[id];
+  if (!product) return;
+ 
+  if (action === 'add' || action === 'inc') {
+    if (!orderItems[id]) orderItems[id] = { id: product.id, name: product.name, sku: product.sku, qty: 0 };
+    orderItems[id].qty += 1;
+    if (action === 'add') showToast(`Dodano u narudžbu: ${product.name}`);
+  } else if (action === 'dec') {
+    if (orderItems[id]) {
+      orderItems[id].qty -= 1;
+      if (orderItems[id].qty <= 0) delete orderItems[id];
+    }
+  }
+  saveOrder();
+  updateCartBadge();
+  updateProductCardUI(id); // only touch the one card, not the whole list
+});
+ 
+function filterProducts(query) {
+  if (!query) return allProducts;
+  const results = [];
+  for (let i = 0; i < allProducts.length; i++) {
+    const p = allProducts[i];
+    if (p.nameLower.indexOf(query) !== -1 || p.skuLower.indexOf(query) !== -1) results.push(p);
+  }
+  return results;
+}
+ 
+function doSearch(q) {
+  const query = q.trim().toLowerCase();
+  clearBtn.classList.toggle('show', q.length > 0);
+  const results = query ? filterProducts(query) : allProducts;
+  renderProducts(results, query);
+  return results;
+}
+ 
+// Debounced so a full-list re-render doesn't fire on every single keystroke
+// while scanning/typing a barcode quickly.
+searchInput.addEventListener('input', e => {
+  const val = e.target.value;
+  clearBtn.classList.toggle('show', val.length > 0);
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => doSearch(val), 120);
+});
+// If the field is submitted (barcode scanners/keyboard wedges send Enter), search immediately.
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    clearTimeout(searchDebounceTimer);
+    doSearch(searchInput.value);
+  }
+});
+clearBtn.addEventListener('click', () => {
+  clearTimeout(searchDebounceTimer);
+  searchInput.value = '';
+  clearBtn.classList.remove('show');
+  doSearch('');
+  searchInput.focus();
+});
+ 
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+ 
+function updateCartBadge() {
+  let count = 0;
+  for (const k in orderItems) count += orderItems[k].qty;
+  cartBadge.textContent = count;
+  cartBadge.classList.toggle('show', count > 0);
+}
+ 
+function saveOrder() {
+  try { localStorage.setItem('provjera_order', JSON.stringify(orderItems)); } catch(e) {}
+}
+ 
+function loadOrder() {
+  try {
+    const saved = localStorage.getItem('provjera_order');
+    if (saved) orderItems = JSON.parse(saved);
+  } catch(e) {}
+  updateCartBadge();
+}
+ 
+function renderOrderSheet() {
+  const items = Object.values(orderItems);
+  const totalQty = items.reduce((s, it) => s + it.qty, 0);
+  orderSub.textContent = items.length === 0 ? 'Narudžba je prazna' : `${items.length} stavki · ${totalQty} kom ukupno`;
+ 
+  if (items.length === 0) {
+    orderList.innerHTML = `<div class="order-empty">Nema stavki u narudžbi.<br>Skeniraj ili pretraži proizvode i dodaj ih ovdje.</div>`;
+    orderActionsRow.style.display = 'none';
+    orderClearBtn.style.display = 'none';
+    return;
+  }
+ 
+  orderActionsRow.style.display = 'flex';
+  orderClearBtn.style.display = 'block';
+  orderList.innerHTML = items.map(it => `
+    <div class="order-item" data-oid="${it.id}">
+      <div class="order-item-info">
+        <div class="order-item-name">${escHtml(it.name)}</div>
+        ${it.sku ? `<div class="order-item-sku">${escHtml(it.sku)}</div>` : ''}
+      </div>
+      <div class="order-stepper">
+        <button class="stepper-btn" data-oaction="dec" data-oid="${it.id}">−</button>
+        <span class="stepper-qty">${it.qty}</span>
+        <button class="stepper-btn" data-oaction="inc" data-oid="${it.id}">+</button>
+      </div>
+      <button class="order-item-remove" data-oaction="remove" data-oid="${it.id}">✕</button>
+    </div>
+  `).join('');
+}
+ 
+orderList.addEventListener('click', function(e) {
+  const btn = e.target.closest('button[data-oaction]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.oid);
+  const action = btn.dataset.oaction;
+  if (!orderItems[id]) return;
+  if (action === 'inc') {
+    orderItems[id].qty += 1;
+  } else if (action === 'dec') {
+    orderItems[id].qty -= 1;
+    if (orderItems[id].qty <= 0) delete orderItems[id];
+  } else if (action === 'remove') {
+    delete orderItems[id];
+  }
+  saveOrder();
+  updateCartBadge();
+  updateProductCardUI(id); // keep the product list in sync without a full rebuild
+ 
+  // Patch just this row in the order sheet instead of re-rendering the whole sheet.
+  if (!orderItems[id]) {
+    const row = orderList.querySelector(`.order-item[data-oid="${id}"]`);
+    if (row) row.remove();
+    if (Object.keys(orderItems).length === 0) renderOrderSheet();
+    else {
+      const items = Object.values(orderItems);
+      const totalQty = items.reduce((s, it) => s + it.qty, 0);
+      orderSub.textContent = `${items.length} stavki · ${totalQty} kom ukupno`;
+    }
+  } else {
+    const row = orderList.querySelector(`.order-item[data-oid="${id}"] .stepper-qty`);
+    if (row) row.textContent = orderItems[id].qty;
+    const items = Object.values(orderItems);
+    const totalQty = items.reduce((s, it) => s + it.qty, 0);
+    orderSub.textContent = `${items.length} stavki · ${totalQty} kom ukupno`;
+  }
+});
+ 
+cartBtn.addEventListener('click', () => { renderOrderSheet(); orderOverlay.classList.add('show'); });
+orderCloseBtn.addEventListener('click', () => orderOverlay.classList.remove('show'));
+orderOverlay.addEventListener('click', (e) => { if (e.target === orderOverlay) orderOverlay.classList.remove('show'); });
+ 
+orderClearBtn.addEventListener('click', () => {
+  if (!confirm('Isprazniti cijelu narudžbu?')) return;
+  orderItems = {};
+  saveOrder();
+  updateCartBadge();
+  renderOrderSheet();
+  doSearch(searchInput.value);
+});
+ 
+function todayStr() {
+  const d = new Date();
+  return d.toLocaleDateString('hr-HR') + ' ' + d.toLocaleTimeString('hr-HR', {hour:'2-digit', minute:'2-digit'});
+}
+ 
+// Renders a CODE128 barcode for an order item (uses the SKU if there is one,
+// otherwise falls back to a stable per-row ID) onto an offscreen canvas and
+// returns a PNG data URL plus its pixel size. Used by both the PDF and Excel
+// exports so the barcode logic + look lives in one place.
+function barcodeCodeFor(it) {
+  return it.sku ? String(it.sku) : `ID${it.id}`;
+}
+function generateBarcodeImage(text) {
+  if (typeof JsBarcode === 'undefined') return null;
+  try {
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, String(text || ' '), {
+      format: 'CODE128',
+      displayValue: true,
+      fontSize: 14,
+      textMargin: 2,
+      height: 40,
+      margin: 4,
+    });
+    return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
+  } catch (e) {
+    return null; // e.g. characters CODE128 can't encode — caller shows '-' instead
+  }
+}
+// docx.js (and some canvas exports) want raw bytes rather than a data URL.
+function dataUrlToUint8Array(dataUrl) {
+  const base64 = dataUrl.split(',')[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+ 
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const items = Object.values(orderItems);
+  if (items.length === 0) return;
+  let csv = 'Naziv;Šifra;Količina\n';
+  items.forEach(it => {
+    csv += `"${it.name.replace(/"/g,'""')}";"${it.sku || ''}";${it.qty}\n`;
+  });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `narudzba_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('CSV izvezen');
+});
+ 
+document.getElementById('exportExcelBtn').addEventListener('click', async () => {
+  const items = Object.values(orderItems);
+  if (items.length === 0) return;
+  if (typeof ExcelJS === 'undefined') { showToast('Excel biblioteka nije učitana'); return; }
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Narudžba');
+    ws.columns = [
+      { header: 'Naziv', key: 'name', width: 40 },
+      { header: 'Šifra', key: 'sku', width: 16 },
+      { header: 'Barkod', key: 'barcode', width: 28 },
+      { header: 'Količina', key: 'qty', width: 10 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).height = 20;
+ 
+    items.forEach((it, i) => {
+      const rowNum = i + 2; // row 1 is the header
+      ws.addRow({ name: it.name, sku: it.sku || '', barcode: '', qty: it.qty });
+      ws.getRow(rowNum).height = 40;
+      ws.getRow(rowNum).alignment = { vertical: 'middle' };
+ 
+      const bc = generateBarcodeImage(barcodeCodeFor(it));
+      if (bc) {
+        const imageId = wb.addImage({ base64: bc.dataUrl, extension: 'png' });
+        const targetH = 34;
+        const targetW = bc.width * (targetH / bc.height);
+        ws.addImage(imageId, {
+          tl: { col: 2, row: rowNum - 1 }, // 0-indexed anchor: column C ("Barkod"), this row
+          ext: { width: targetW, height: targetH },
+        });
+      }
+    });
+ 
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `narudzba_${new Date().toISOString().slice(0,10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Excel izvezen (s barkodovima)');
+  } catch (err) {
+    console.error(err);
+    showToast('Greška pri izradi Excela');
+  }
+});
+ 
+document.getElementById('exportPdfBtn').addEventListener('click', () => {
+  const items = Object.values(orderItems);
+  if (items.length === 0) return;
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Narudzba za skladiste', 14, 18);
+    doc.setFontSize(10);
+    doc.setTextColor(90);
+    doc.text(todayStr(), 14, 25);
+    const totalQty = items.reduce((s, it) => s + it.qty, 0);
+ 
+    // Pre-generate each row's barcode image so it's ready when didDrawCell fires.
+    const barcodes = items.map(it => generateBarcodeImage(barcodeCodeFor(it)));
+ 
+    doc.autoTable({
+      startY: 32,
+      head: [['Naziv', 'Sifra', 'Barkod', 'Kolicina']],
+      body: items.map(it => [it.name, it.sku || '-', '', String(it.qty)]),
+      styles: { fontSize: 10, cellPadding: 4, minCellHeight: 18 },
+      headStyles: { fillColor: [40, 40, 45] },
+      columnStyles: { 2: { cellWidth: 55 }, 3: { halign: 'right' } },
+      foot: [['', '', 'Ukupno', String(totalQty)]],
+      footStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: 'bold' },
+      didDrawCell: (data) => {
+        if (data.section !== 'body' || data.column.index !== 2) return;
+        const bc = barcodes[data.row.index];
+        if (!bc) return;
+        const maxW = data.cell.width - 4;
+        const maxH = data.cell.height - 4;
+        const ratio = Math.min(maxW / bc.width, maxH / bc.height);
+        const w = bc.width * ratio;
+        const h = bc.height * ratio;
+        const x = data.cell.x + (data.cell.width - w) / 2;
+        const y = data.cell.y + (data.cell.height - h) / 2;
+        doc.addImage(bc.dataUrl, 'PNG', x, y, w, h);
+      },
+    });
+    doc.save(`narudzba_${new Date().toISOString().slice(0,10)}.pdf`);
+    showToast('PDF izvezen');
+  } catch (err) {
+    showToast('Greška pri izradi PDF-a');
+  }
+});
+ 
+document.getElementById('exportWordBtn').addEventListener('click', async () => {
+  const items = Object.values(orderItems);
+  if (items.length === 0) return;
+  if (typeof docx === 'undefined') { showToast('Word biblioteka nije učitana'); return; }
+  try {
+    const { Document, Packer, Table, TableRow, TableCell, Paragraph, ImageRun, TextRun, WidthType, HeadingLevel } = docx;
+    const totalQty = items.reduce((s, it) => s + it.qty, 0);
+ 
+    const headerCell = (text) => new TableCell({
+      width: { size: 25, type: WidthType.PERCENTAGE },
+      children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })],
+    });
+    const headerRow = new TableRow({
+      tableHeader: true,
+      children: ['Naziv', 'Šifra', 'Barkod', 'Količina'].map(headerCell),
+    });
+ 
+    const rows = items.map(it => {
+      const bc = generateBarcodeImage(barcodeCodeFor(it));
+      let barcodeCellChildren;
+      if (bc) {
+        const targetH = 30;
+        const targetW = bc.width * (targetH / bc.height);
+        barcodeCellChildren = [new Paragraph({
+          children: [new ImageRun({
+            type: 'png',
+            data: dataUrlToUint8Array(bc.dataUrl),
+            transformation: { width: targetW, height: targetH },
+          })],
+        })];
+      } else {
+        barcodeCellChildren = [new Paragraph('—')];
+      }
+      return new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph(it.name)] }),
+          new TableCell({ children: [new Paragraph(it.sku || '—')] }),
+          new TableCell({ children: barcodeCellChildren }),
+          new TableCell({ children: [new Paragraph(String(it.qty))] }),
+        ],
+      });
+    });
+ 
+    const table = new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [headerRow, ...rows],
+    });
+ 
+    const doc = new Document({
+      sections: [{
+        children: [
+          new Paragraph({ text: 'Narudžba za skladište', heading: HeadingLevel.HEADING_1 }),
+          new Paragraph({ text: todayStr() }),
+          new Paragraph({ text: '' }),
+          table,
+          new Paragraph({ text: '' }),
+          new Paragraph({ text: `Ukupno stavki: ${items.length} · Ukupno komada: ${totalQty}` }),
+        ],
+      }],
+    });
+ 
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `narudzba_${new Date().toISOString().slice(0,10)}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Word dokument izvezen');
+  } catch (err) {
+    console.error(err);
+    showToast('Greška pri izradi Word dokumenta');
+  }
+});
+ 
+document.getElementById('printOrderBtn').addEventListener('click', () => {
+  const items = Object.values(orderItems);
+  if (items.length === 0) return;
+  document.getElementById('printDate').textContent = todayStr();
+  document.getElementById('printTableBody').innerHTML = items.map(it => `
+    <tr>
+      <td>${escHtml(it.name)}</td>
+      <td>${escHtml(it.sku || '—')}</td>
+      <td class="num">${it.qty}</td>
+    </tr>
+  `).join('');
+  window.print();
+});
+ 
+function openScanner() {
+  scanOverlay.classList.add('show');
+  manualCodeInput.value = '';
+  if (typeof Html5Qrcode === 'undefined') {
+    document.getElementById('qrReader').innerHTML = '<div style="color:#888;padding:20px;text-align:center;font-size:13px;">Skener nije dostupan (nema internetske veze za učitavanje biblioteke). Koristi ručni unos ispod.</div>';
+    return;
+  }
+  scannerStarting = true;
+  html5QrCode = new Html5Qrcode("qrReader", {
+    // Limiting formats (mostly 1D retail barcodes + QR) means the scanner spends
+    // its time budget per frame trying far fewer symbologies, so detection is faster.
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.QR_CODE,
+    ],
+    verbose: false,
+  });
+  const config = {
+    fps: 15,
+    qrbox: { width: 280, height: 140 },
+    disableFlip: true,
+    // Uses the browser's native BarcodeDetector when available — much faster than the JS fallback.
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  };
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    onScanSuccess,
+    () => {}
+  ).then(() => { scannerStarting = false; }).catch(() => {
+    scannerStarting = false;
+    document.getElementById('qrReader').innerHTML = '<div style="color:#888;padding:20px;text-align:center;font-size:13px;">Nije moguće pristupiti kameri. Provjeri dozvole ili koristi ručni unos ispod.</div>';
+  });
+}
+ 
+function closeScanner() {
+  scanOverlay.classList.remove('show');
+  if (html5QrCode) {
+    const inst = html5QrCode;
+    html5QrCode = null;
+    if (!scannerStarting) {
+      inst.stop().then(() => inst.clear()).catch(() => {});
+    } else {
+      // still starting up — stop as soon as it's ready to avoid a dangling camera stream
+      setTimeout(() => { inst.stop().then(() => inst.clear()).catch(() => {}); }, 300);
+    }
+  }
+}
+ 
+function onScanSuccess(decodedText) {
+  handleScannedCode(decodedText);
+}
+ 
+function handleScannedCode(code) {
+  closeScanner();
+  searchInput.value = code;
+  clearTimeout(searchDebounceTimer);
+  const results = doSearch(code) || [];
+  if (results.length === 1) {
+    const p = results[0];
+    if (!orderItems[p.id]) orderItems[p.id] = { id: p.id, name: p.name, sku: p.sku, qty: 0 };
+    orderItems[p.id].qty += 1;
+    saveOrder();
+    updateCartBadge();
+    updateProductCardUI(p.id);
+    showToast(`Skenirano: ${p.name} (${orderItems[p.id].qty} kom u narudžbi)`);
+  } else if (results.length > 1) {
+    showToast(`Pronađeno ${results.length} rezultata za "${code}"`);
+  } else {
+    showToast(`Nema proizvoda za kod "${code}"`);
+  }
+}
+ 
+scanBtn.addEventListener('click', openScanner);
+scanCancelBtn.addEventListener('click', closeScanner);
+manualCodeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && manualCodeInput.value.trim()) {
+    handleScannedCode(manualCodeInput.value.trim());
+  }
+});
+ 
+function initFromStorage() {
+  try {
+    const saved = localStorage.getItem('provjera_products');
+    const savedMap = localStorage.getItem('provjera_colmap');
+    if (saved) {
+      allProducts = JSON.parse(saved);
+      // Backfill lowercase fields for data saved before this optimization existed.
+      let needsBackfill = false;
+      for (let i = 0; i < allProducts.length; i++) {
+        const p = allProducts[i];
+        if (typeof p.nameLower !== 'string') { p.nameLower = (p.name || '').toLowerCase(); needsBackfill = true; }
+        if (typeof p.skuLower !== 'string') { p.skuLower = (p.sku || '').toLowerCase(); needsBackfill = true; }
+      }
+      if (savedMap) colMap = JSON.parse(savedMap);
+      rebuildIndex();
+      statsPill.style.display = 'inline';
+      statsPill.textContent = `${allProducts.length} proizvoda`;
+      uploadLabel.textContent = 'Zamijeni ili dodaj proizvode';
+      uploadHint.textContent = 'Podaci su sačuvani lokalno';
+      renderProducts(allProducts, '');
+      if (needsBackfill) {
+        try { localStorage.setItem('provjera_products', JSON.stringify(allProducts)); } catch(e) {}
+      }
+    }
+  } catch(e) {}
+  loadOrder();
+}
+ 
+// html5-qrcode / xlsx / jspdf load with `defer` now, so make sure the DOM/data
+// wiring above runs only after the document (and those scripts) are ready.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initFromStorage);
+} else {
+  initFromStorage();
+}
+ 
+const _origBuild = buildProducts;
+window.buildProducts = function(mode) {
+  _origBuild(mode);
+  try {
+    localStorage.setItem('provjera_products', JSON.stringify(allProducts));
+    localStorage.setItem('provjera_colmap', JSON.stringify(colMap));
+  } catch(e) {}
+};
+</script>
+</body>
+</html>
