@@ -669,21 +669,26 @@
   }
  
   #printArea { display: none; }
+   @page { margin: 12mm; }
   @media print {
-    body * { visibility: hidden; }
-    #printArea, #printArea * { visibility: visible; }
+    html, body {
+      background: #fff !important;
+      color: #000;
+      height: auto;
+      min-height: 0;
+    }
+    .app, .mapper-overlay, .toast { display: none !important; }
     #printArea {
-      display: block;
-      position: absolute;
-      top: 0; left: 0;
+      display: block !important;
+      position: static;
       width: 100%;
       color: #000;
       background: #fff;
-      padding: 20px;
+      padding: 0;
       font-family: Arial, sans-serif;
     }
     #printArea h1 { font-size: 20px; margin-bottom: 4px; }
-    #printArea .print-date { font-size: 12px; color: #444; margin-bottom: 16px; }
+    #printArea .print-date { font-size: 12px; color: #444; margin-bottom: 6px; }
     #printArea table { width: 100%; border-collapse: collapse; }
     #printArea th, #printArea td {
       border: 1px solid #999;
