@@ -1851,8 +1851,7 @@ document.getElementById('exportWordBtn').addEventListener('click', async () => {
     showToast('Greška pri izradi Word dokumenta');
   }
 });
- 
-document.getElementById('printOrderBtn').addEventListener('click', () => {
+ document.getElementById('printOrderBtn').addEventListener('click', () => {
   const items = Object.values(orderItems);
   if (items.length === 0) return;
   document.getElementById('printDate').textContent = todayStr();
@@ -1879,7 +1878,14 @@ document.getElementById('printOrderBtn').addEventListener('click', () => {
     <tr><td>PDV (25%)</td><td class="num">${formatPrice(tax)}</td></tr>
     <tr class="grand"><td>Ukupno s PDV-om</td><td class="num">${formatPrice(total)}</td></tr>
   `;
-  window.print();
+  const isStandalone = window.navigator.standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  if (isStandalone) {
+    showToast('Ispis nije podržan u aplikaciji — izvozim PDF za ispis');
+    document.getElementById('exportPdfBtn').click();
+  } else {
+    window.print();
+  }
 });
  
 function openScanner() {
